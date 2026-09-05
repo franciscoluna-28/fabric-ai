@@ -370,6 +370,13 @@ export function Chat() {
             </PromptInput>
             <Suggestions className="mt-2">
               <Suggestion
+                suggestion="Summarize this week as a report"
+                onClick={handleSuggestion}
+                variant="default"
+              >
+                Generate report
+              </Suggestion>
+              <Suggestion
                 suggestion="What changed in the last 7 days?"
                 onClick={handleSuggestion}
                 variant="secondary"
@@ -379,13 +386,6 @@ export function Chat() {
                 onClick={handleSuggestion}
                 variant="secondary"
               />
-              <Suggestion
-                suggestion="Summarize this week as a report"
-                onClick={handleSuggestion}
-                variant="default"
-              >
-                Generate report
-              </Suggestion>
             </Suggestions>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               Answers are grounded in the project&apos;s ingested commits. Sources are shown as citations.

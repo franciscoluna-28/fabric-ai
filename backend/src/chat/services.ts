@@ -11,6 +11,7 @@ import { parseQueryWindow } from "@/chat/date-window";
 import { buildSystemPrompt, buildUserMessage } from "@/chat/prompts";
 import type { ChatMessageDTO } from "@/chat/schemas";
 import * as projectsStore from "@/projects/stores/projects-store";
+import { prepareProjectBranch } from "@/projects/services";
 
 const HISTORY_LIMIT = 20;
 
@@ -102,6 +103,11 @@ export async function streamChatMessage(opts: {
   const project = await projectsStore.getProjectById({ id: session.projectId });
 
   await chatSessionsStore.addMessage({ sessionId, role: "user", content });
+
+  // Ensure the branch is ingested before retrieval
+  if (branch) {
+    await prepareProjectBranch(session.projectId, branch).catch(() => {});
+  }
 
   const { startDate: dateWindowStart, endDate: dateWindowEnd, filteredQuery } = parseQueryWindow(content);
   const citations = await retrieveCommits({
