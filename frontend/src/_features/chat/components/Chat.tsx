@@ -218,47 +218,53 @@ export function Chat() {
 
     try {
       let sid = sessionId;
+      let isNewSession = false;
       if (!sid) {
         const created = await createSession.mutateAsync(projectId);
         sid = created.id;
+        isNewSession = true;
         const p = new URLSearchParams(searchParams.toString());
         p.set("session", sid);
-        router.push(`/app?${p.toString()}`, { scroll: false });
+        router.replace(`/app?${p.toString()}`, { scroll: false });
       }
 
-      const userMsg: ChatMessage = {
-        id: `local-user-${Date.now()}`,
-        role: "user",
-        content: trimmed,
-        branch,
-        citations: [],
-        createdAt: new Date().toISOString(),
-      };
-      const draft: ChatMessage = {
-        id: `local-assistant-${Date.now()}`,
-        role: "assistant",
-        content: "",
-        branch,
-        citations: [],
-        createdAt: new Date().toISOString(),
-      };
-      setLiveMessages((m) => [...m, userMsg, draft]);
+      if (!isNewSession) {
+        const userMsg: ChatMessage = {
+          id: `local-user-${Date.now()}`,
+          role: "user",
+          content: trimmed,
+          branch,
+          citations: [],
+          createdAt: new Date().toISOString(),
+        };
+        const draft: ChatMessage = {
+          id: `local-assistant-${Date.now()}`,
+          role: "assistant",
+          content: "",
+          branch,
+          citations: [],
+          createdAt: new Date().toISOString(),
+        };
+        setLiveMessages((m) => [...m, userMsg, draft]);
+      }
 
       await streamChatMessage(sid, trimmed, branch, (chunk) => {
-        if (chunk.type === "token") {
+        if (chunk.type === "token" && !isNewSession) {
           setLiveMessages((m) => {
             const copy = [...m];
-            const idx = copy.findIndex((msg) => msg.id === draft.id);
+            const idx = copy.findIndex((msg) => msg.id.startsWith("local-assistant"));
             if (idx >= 0) copy[idx] = { ...copy[idx], content: copy[idx].content + chunk.content };
             return copy;
           });
         } else if (chunk.type === "done") {
-          setLiveMessages((m) => {
-            const copy = [...m];
-            const idx = copy.findIndex((msg) => msg.id === draft.id);
-            if (idx >= 0) copy[idx] = { ...chunk.message };
-            return copy;
-          });
+          if (!isNewSession) {
+            setLiveMessages((m) => {
+              const copy = [...m];
+              const idx = copy.findIndex((msg) => msg.id.startsWith("local-assistant"));
+              if (idx >= 0) copy[idx] = { ...chunk.message };
+              return copy;
+            });
+          }
         } else if (chunk.type === "error") {
           toast.error(chunk.error);
         }

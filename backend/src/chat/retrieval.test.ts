@@ -47,7 +47,7 @@ describe("retrieveCommits", () => {
 
     expect(mockEmbedTexts).toHaveBeenCalledWith(["what changed"]);
     expect(mockSemanticSearch).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: "p1", limit: 200 }),
+      expect.objectContaining({ projectId: "p1", limit: 120 }),
     );
     expect(mockKeywordSearch).not.toHaveBeenCalled();
     expect(result).toEqual([

@@ -8,6 +8,7 @@ import { callAI } from "@/reports/ai";
 import * as chatSessionsStore from "@/chat/stores/chat-sessions-store";
 import { retrieveCommits } from "@/chat/retrieval";
 import { parseQueryWindow } from "@/chat/date-window";
+import { getLatestCommitDate } from "@/projects/stores/commit-chunks-store";
 import { buildSystemPrompt, buildUserMessage } from "@/chat/prompts";
 import type { ChatMessageDTO } from "@/chat/schemas";
 import * as projectsStore from "@/projects/stores/projects-store";
@@ -109,7 +110,20 @@ export async function streamChatMessage(opts: {
     await prepareProjectBranch(session.projectId, branch).catch(() => {});
   }
 
-  const { startDate: dateWindowStart, endDate: dateWindowEnd, filteredQuery } = parseQueryWindow(content);
+  const DAY_MS = 86_400_000;
+
+  let { startDate: dateWindowStart, endDate: dateWindowEnd, filteredQuery } = parseQueryWindow(content);
+
+  // If no explicit date window was parsed and the query asks for "latest"/"recent",
+  // use the latest commit in the project as the anchor instead of "now".
+  if (!dateWindowStart && !dateWindowEnd && /\b(latest|recent|newest|last changes|recent changes)\b/i.test(content)) {
+    const latest = await getLatestCommitDate({ projectId: session.projectId, branch: branch ?? undefined });
+    if (latest) {
+      dateWindowEnd = latest;
+      dateWindowStart = new Date(latest.getTime() - 30 * DAY_MS);
+    }
+  }
+
   const citations = await retrieveCommits({
     projectId: session.projectId,
     query: filteredQuery,

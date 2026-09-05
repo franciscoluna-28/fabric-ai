@@ -75,6 +75,27 @@ export async function countChunksForProject({
   return row?.count ?? 0;
 }
 
+export async function getLatestCommitDate({
+  projectId,
+  branch,
+  tx,
+}: {
+  projectId: string;
+  branch?: string;
+  tx?: DbOrTx;
+}): Promise<Date | null> {
+  const client = tx || db;
+  const conditions = [eq(commitChunks.projectId, projectId)];
+  if (branch) conditions.push(eq(commitChunks.branch, branch));
+  const [row] = await client
+    .select({ committedAt: commitChunks.committedAt })
+    .from(commitChunks)
+    .where(and(...conditions))
+    .orderBy(desc(commitChunks.committedAt))
+    .limit(1);
+  return row?.committedAt ?? null;
+}
+
 export async function getChunksByShas({
   projectId,
   shas,
