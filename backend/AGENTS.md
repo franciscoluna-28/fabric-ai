@@ -39,9 +39,9 @@ Errors: return standard `{ error: ... }` objects with appropriate HTTP status co
 
 CORS is open by default (env `CORS_ORIGIN`, default `http://localhost:3000`). No rate limiting built in. No authentication middleware — `GITHUB_TOKEN` is server-side only.
 
-## AI / model provisioning (`src/reports/ai.ts` + `src/shared/integrations/providers/registry.ts`)
+## AI / model provisioning (`src/chat/ai.ts` + `src/shared/integrations/providers/registry.ts`)
 
-All LLM calls go through `callAI()` from `src/reports/ai.ts` — never instantiate provider SDKs directly.
+All LLM calls go through `callAI()` from `src/chat/ai.ts` — never instantiate provider SDKs directly.
 
 Provider metadata (SDK type, default model, env key name, verify URL) lives in the registry: `src/shared/integrations/providers/registry.ts` `PROVIDER_REGISTRY`. The only supported SDK types are `openrouter` (uses `@openrouter/sdk`) and `openai-compatible` (uses `openai` package with custom base URL).
 
