@@ -15,7 +15,7 @@ import {
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PROVIDERS } from "@/src/shared/constants";
-import { ModelSelector } from "@/src/_features/reports/components/ModelSelector";
+import { ModelSelector } from "@/src/_features/settings/components/ModelSelector";
 import {
   useAISettings,
   useUpdateAISettings,

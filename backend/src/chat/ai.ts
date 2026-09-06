@@ -34,9 +34,6 @@ async function callOpenRouter(
   maxTokens: number,
   onChunk?: (chunk: string) => void,
 ): Promise<AIResponse> {
-  // Streaming goes through the OpenAI SDK against OpenRouter's OpenAI-compatible
-  // endpoint — the SDK's own streaming response is awkward to consume, and the
-  // `openai` package is already a dependency (used for embeddings).
   if (onChunk) {
     const client = new OpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL });
     return streamChatCompletions(client, { model, messages, temperature, maxTokens }, onChunk);
@@ -170,4 +167,14 @@ export function cleanResponse(rawContent: string): string {
     return withoutThinking.slice(anchor).trim();
   }
   return withoutThinking;
+}
+
+export class ProviderKeyError extends Error {
+  readonly status = 400;
+  constructor(provider: string) {
+    const envKey = getProviderConfig(provider)?.envKey ?? "the provider's env key";
+    super(
+      `No API key configured for AI provider "${provider}". Add one in Settings or set ${envKey}.`,
+    );
+  }
 }

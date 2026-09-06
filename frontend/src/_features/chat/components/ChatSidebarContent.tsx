@@ -16,7 +16,7 @@ import {
   useDeleteChatSession,
 } from "@/src/_features/chat/services/chat-api";
 import { AddRepositoryDialog } from "@/src/_features/chat/components/AddRepositoryDialog";
-import { useProjects } from "@/src/_features/reports/services/projects-api";
+import { useProjects } from "@/src/_features/chat/services/projects-api";
 import { cn } from "@/src/shared/lib/utils";
 import {
   ChevronRight,

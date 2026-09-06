@@ -9,7 +9,6 @@ import { health } from "@/health/routes";
 import { checkVerification } from "@/verification/routes";
 import { listModels } from "@/models/routes";
 import { listRepositories, listBranches, listCommits, countCommits } from "@/gitRepositories/routes";
-import { createReport, listReports, getReport, getReportCommits, getReportJobStatus, streamReportJob, getJobCommits } from "@/reports/routes";
 import { listProjects, prepareBranch } from "@/projects/routes";
 import { createProject as createProjectRoute } from "@/projects/routes";
 import { PrepareBranchBody, PrepareBranchResponse, ProjectIdParams, CreateProjectBody, CreateProjectResponse } from "@/projects/schemas";
@@ -47,25 +46,12 @@ import {
   RepositoriesResponse,
   BranchesResponse,
 } from "@/gitRepositories/schemas";
-import {
-  ReportInputBody,
-  ReportJobAcceptedResponse,
-  ReportJobStatusResponse,
-  ReportJobParams,
-  ReportsListQuery,
-  ReportsListResponse,
-  ReportIdParams,
-  ReportGetResponse,
-  ReportCommitsQuery,
-  ReportCommitsResponse,
-} from "@/reports/schemas";
-import {
-  ProjectsResponse,
-} from "@/projects/schemas";
+import { ProjectsResponse } from "@/projects/schemas";
 import {
   AddCredentialBody,
   CredentialListResponse,
   CredentialCreatedResponse,
+  CredentialIdParams,
   VerifyCredentialBody,
   VerifyCredentialResponse,
 } from "@/credentials/schemas";
@@ -144,93 +130,9 @@ export async function buildApp() {
       params: RepoOwnerParams,
       response: { 200: BranchesResponse, 400: ErrorResponse },
     },
-  }, listBranches);
+}, listBranches);
 
-  app.get("/api/v1/repositories/:owner/:repo/commits", {
-    schema: {
-      description: "List commits for a repository within an optional date range",
-      tags: ["repositories"],
-      params: RepoOwnerParams,
-      querystring: CommitsQuery,
-      response: { 200: CommitsResponse, 400: ErrorResponse },
-    },
-  }, listCommits);
-
-  app.get("/api/v1/repositories/:owner/:repo/commits/count", {
-    schema: {
-      description: "Count commits for a repository within an optional date range",
-      tags: ["repositories"],
-      params: RepoOwnerParams,
-      querystring: CommitsCountQuery,
-      response: { 200: CommitsCountResponse, 400: ErrorResponse },
-    },
-  }, countCommits);
-
-  app.post("/api/v1/reports", {
-    schema: {
-      description: "Queue a new report from commits (processed in the background)",
-      tags: ["reports"],
-      body: ReportInputBody,
-      response: { 202: ReportJobAcceptedResponse, 400: ErrorResponse },
-    },
-  }, createReport);
-
-  app.get("/api/v1/reports/jobs/:jobId", {
-    schema: {
-      description: "Get the status of a queued report job",
-      tags: ["reports"],
-      params: ReportJobParams,
-      response: { 200: ReportJobStatusResponse, 404: ErrorResponse },
-    },
-  }, getReportJobStatus);
-
-  app.get("/api/v1/reports/jobs/:jobId/stream", {
-    schema: {
-      description: "Server-sent event stream of a report job's progress",
-      tags: ["reports"],
-      params: ReportJobParams,
-    },
-  }, streamReportJob);
-
-  app.get("/api/v1/reports/jobs/:jobId/commits", {
-    schema: {
-      description: "Cursor-paginated commits for an ingested report window (before the report exists)",
-      tags: ["reports"],
-      params: ReportJobParams,
-      querystring: ReportCommitsQuery,
-      response: { 200: ReportCommitsResponse, 400: ErrorResponse, 404: ErrorResponse },
-    },
-  }, getJobCommits);
-
-  app.get("/api/v1/reports", {
-    schema: {
-      description: "List all generated reports, optionally filtered by project",
-      tags: ["reports"],
-      querystring: ReportsListQuery,
-      response: { 200: ReportsListResponse, 400: ErrorResponse, 500: ErrorResponse },
-    },
-  }, listReports);
-
-  app.get("/api/v1/reports/:id", {
-    schema: {
-      description: "Get a single report by ID",
-      tags: ["reports"],
-      params: ReportIdParams,
-      response: { 200: ReportGetResponse, 404: ErrorResponse },
-    },
-  }, getReport);
-
-  app.get("/api/v1/reports/:id/commits", {
-    schema: {
-      description: "Cursor-paginated commits for a report (searchable by commit message)",
-      tags: ["reports"],
-      params: ReportIdParams,
-      querystring: ReportCommitsQuery,
-      response: { 200: ReportCommitsResponse, 400: ErrorResponse, 404: ErrorResponse },
-    },
-  }, getReportCommits);
-
-app.get("/api/v1/projects", {
+  app.get("/api/v1/projects", {
     schema: {
       description: "List synced GitHub projects",
       tags: ["projects"],
@@ -278,7 +180,7 @@ app.get("/api/v1/projects", {
     schema: {
       description: "Delete a stored credential",
       tags: ["credentials"],
-      params: ReportIdParams,
+      params: CredentialIdParams,
       response: { 204: {}, 404: ErrorResponse },
     },
   }, deleteCredential);

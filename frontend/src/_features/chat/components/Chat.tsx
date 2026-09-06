@@ -39,8 +39,8 @@ import {
   EmptyDescription,
   EmptyMedia,
 } from "@/src/components/ui/empty";
-import { useProjects } from "@/src/_features/reports/services/projects-api";
-import { useBranches } from "@/src/_features/reports/services/api";
+import { useProjects } from "@/src/_features/chat/services/projects-api";
+import { useBranches } from "@/src/_features/chat/services/git-api";
 import {
   useChatMessages,
   useCreateChatSession,
