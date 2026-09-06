@@ -1,5 +1,9 @@
 import { Type } from "@sinclair/typebox";
 
+export const CredentialIdParams = Type.Object({
+  id: Type.String(),
+});
+
 export const AddCredentialBody = Type.Object({
   provider: Type.String({ minLength: 1 }),
   key: Type.String({ minLength: 1 }),

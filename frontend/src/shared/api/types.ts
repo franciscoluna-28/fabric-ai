@@ -237,6 +237,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             branches: string[];
+                            defaultBranch: string;
                         };
                     };
                 };
@@ -337,6 +338,7 @@ export interface paths {
                 query?: {
                     startDate?: string;
                     endDate?: string;
+                    branch?: string;
                 };
                 header?: never;
                 path: {
@@ -391,6 +393,8 @@ export interface paths {
             parameters: {
                 query?: {
                     projectId?: string;
+                    startDate?: string;
+                    endDate?: string;
                 };
                 header?: never;
                 path?: never;
@@ -413,6 +417,7 @@ export interface paths {
                                 startDate: string;
                                 endDate: string;
                                 branch: string;
+                                sessionId?: string | null;
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -446,7 +451,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** @description Generate a new report from commits */
+        /** @description Queue a new report from commits (processed in the background) */
         post: {
             parameters: {
                 query?: never;
@@ -471,20 +476,186 @@ export interface paths {
                             customInstructions?: string;
                             model?: string;
                             provider?: "openrouter" | "deepseek" | "openai";
+                            /** Format: uuid */
+                            sessionId?: string;
                         };
                     };
                 };
             };
             responses: {
                 /** @description Default Response */
-                201: {
+                202: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            reportId: string;
-                            projectId: string;
+                            jobId: string;
+                            status: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/jobs/{jobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the status of a queued report job */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            jobId: string;
+                            status: string;
+                            phase: "ingestion" | "generation" | null;
+                            commitCount: number;
+                            progress: string | null;
+                            reportId: string | null;
+                            projectId: string | null;
+                            error: {
+                                message: string;
+                                status: number;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            startedAt: string | null;
+                            finishedAt: string | null;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/jobs/{jobId}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Server-sent event stream of a report job's progress */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/jobs/{jobId}/commits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Cursor-paginated commits for an ingested report window (before the report exists) */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            commits: {
+                                id: string;
+                                commitSha: string;
+                                commitMessage: string;
+                                author?: string | null;
+                                /** Format: date-time */
+                                committedAt: string;
+                                metadata?: unknown;
+                            }[];
+                            nextCursor: null | string;
+                            total: number;
                         };
                     };
                 };
@@ -500,18 +671,20 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
-                429: {
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            report: string;
+                            error: string;
                         };
                     };
                 };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -552,6 +725,7 @@ export interface paths {
                             startDate: string;
                             endDate: string;
                             branch: string;
+                            sessionId?: string | null;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -615,7 +789,6 @@ export interface paths {
                                 commitSha: string;
                                 commitMessage: string;
                                 author?: string | null;
-                                diffSummary: string;
                                 /** Format: date-time */
                                 committedAt: string;
                                 metadata?: unknown;
@@ -688,6 +861,7 @@ export interface paths {
                                 providerOwner: string;
                                 repositoryName: string;
                                 defaultBranch: string;
+                                indexedBranches: string[];
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -710,33 +884,93 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** @description Create or connect a new project */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @default github */
+                        gitProvider?: "github" | "gitlab";
+                        providerProjectId: string;
+                        providerOwner: string;
+                        repositoryName: string;
+                        /** @default main */
+                        defaultBranch?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            gitProvider: string;
+                            providerProjectId: string;
+                            providerOwner: string;
+                            repositoryName: string;
+                            defaultBranch: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/projects/{id}/sync": {
+    "/api/v1/projects/{id}/branches/prepare": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Sync status (watermark, latest job, totals) for a project branch */
-        get: {
+        get?: never;
+        put?: never;
+        /** @description Ingest a project branch before chat retrieval */
+        post: {
             parameters: {
-                query?: {
-                    branch?: string;
-                };
+                query?: never;
                 header?: never;
                 path: {
                     id: string;
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        branch: string;
+                    };
+                };
+            };
             responses: {
                 /** @description Default Response */
                 200: {
@@ -745,32 +979,14 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            projectId: string;
                             branch: string;
-                            watermark: null | {
-                                sha: string;
-                                /** Format: date-time */
-                                at: string;
-                            };
-                            latestJob: null | {
-                                id: string;
-                                status: string;
-                                attempts: number;
-                                error: null | string;
-                                /** Format: date-time */
-                                scheduledAt: string;
-                                startedAt: null | string;
-                                finishedAt: null | string;
-                            };
-                            totals: {
-                                chunks: number;
-                                embedded: number;
-                            };
+                            commitsFound: number;
+                            chunksWritten: number;
                         };
                     };
                 };
                 /** @description Default Response */
-                400: {
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -793,8 +1009,6 @@ export interface paths {
                 };
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1107,6 +1321,346 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List chat sessions, optionally filtered by project */
+        get: {
+            parameters: {
+                query?: {
+                    projectId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            sessions: {
+                                id: string;
+                                projectId: string;
+                                title: string;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** @description Create a new chat session for a project */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        projectId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            projectId: string;
+                            title: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/sessions/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List messages for a chat session */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            messages: {
+                                id: string;
+                                role: "user" | "assistant";
+                                content: string;
+                                branch?: string | null;
+                                citations: {
+                                    commitSha: string;
+                                    commitMessage: string;
+                                    author: string | null;
+                                    committedAt: string;
+                                    filesChanged: string[];
+                                    commitUrl: string | null;
+                                }[];
+                                /** Format: date-time */
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** @description Send a message and stream the assistant reply (SSE) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        content: string;
+                        branch?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Delete a chat session */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            deleted: boolean;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

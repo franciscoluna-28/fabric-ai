@@ -57,13 +57,14 @@ describe("GET /api/v1/models", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("returns only 1536-dim allowlisted embedding models", async () => {
+  it("returns only 512-dim allowlisted embedding models", async () => {
     const mockModels = {
       data: [
-        { id: "openai/text-embedding-3-small", name: "Text Embedding 3 Small", pricing: { prompt: "0.00000002", completion: "0" }, description: "1536 dims" },
-        { id: "openai/text-embedding-3-large", name: "Text Embedding 3 Large", pricing: { prompt: "0.00000013", completion: "0" }, description: "3072 default, 1536 via param" },
+        { id: "openai/text-embedding-3-small", name: "Text Embedding 3 Small", pricing: { prompt: "0.00000002", completion: "0" }, description: "512 dims" },
+        { id: "openai/text-embedding-3-large", name: "Text Embedding 3 Large", pricing: { prompt: "0.00000013", completion: "0" }, description: "3072 default, 512 via param" },
+        { id: "openai/text-embedding-ada-002", name: "Text Embedding ADA 002", pricing: { prompt: "0.0000001", completion: "0" }, description: "fixed 1536, no dimensions param" },
         { id: "voyageai/voyage-4", name: "Voyage 4", pricing: { prompt: "0.00000006", completion: "0" }, description: "2048 dims" },
-        { id: "qwen/qwen3-embedding-8b", name: "Qwen3 Embedding 8B", pricing: { prompt: "0.00000001", completion: "0" }, description: "not 1536" },
+        { id: "qwen/qwen3-embedding-8b", name: "Qwen3 Embedding 8B", pricing: { prompt: "0.00000001", completion: "0" }, description: "not 512" },
       ],
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({

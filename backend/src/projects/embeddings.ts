@@ -2,9 +2,10 @@ import OpenAI from "openai";
 import { env } from "@/config/env";
 import { resolveApiKey } from "@/credentials/services";
 import { getAISettings } from "@/settings/services";
+import { logger } from "@/shared/logger";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const EMBEDDING_DIMENSIONS = 1536;
+const EMBEDDING_DIMENSIONS = 512;
 
 export async function embedTexts(
   texts: string[],
@@ -21,8 +22,13 @@ export async function embedTexts(
   const settings = await getAISettings();
   const model = opts?.model || settings.embeddingModel;
   const client = new OpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL });
+  const start = performance.now();
 
-  const response = await client.embeddings.create({ model, input: texts });
+  const response = await client.embeddings.create({
+    model,
+    input: texts,
+    dimensions: EMBEDDING_DIMENSIONS,
+  });
   const byIndex = new Map(response.data.map((d) => [d.index, d.embedding]));
   const embeddings = texts.map((_, i) => {
     const emb = byIndex.get(i);
@@ -34,6 +40,15 @@ export async function embedTexts(
     }
     return emb;
   });
+
+  logger.info(
+    {
+      model,
+      count: texts.length,
+      durationMs: Math.round(performance.now() - start),
+    },
+    "embedTexts complete",
+  );
 
   return embeddings;
 }

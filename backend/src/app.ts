@@ -9,12 +9,30 @@ import { health } from "@/health/routes";
 import { checkVerification } from "@/verification/routes";
 import { listModels } from "@/models/routes";
 import { listRepositories, listBranches, listCommits, countCommits } from "@/gitRepositories/routes";
-import { createReport, listReports, getReport, getReportCommits } from "@/reports/routes";
-import { listProjects, getProjectSyncStatus } from "@/projects/routes";
+import { listProjects, prepareBranch } from "@/projects/routes";
+import { createProject as createProjectRoute } from "@/projects/routes";
+import { PrepareBranchBody, PrepareBranchResponse, ProjectIdParams, CreateProjectBody, CreateProjectResponse } from "@/projects/schemas";
 import { listKeys as listCredentials, addKey as addCredential, deleteKey as deleteCredential, verifyKey as verifyCredential } from "@/credentials/routes";
 import { getSettingsRoute, updateSettingsRoute } from "@/settings/routes";
+import {
+  createSession as createChatSession,
+  listSessions as listChatSessions,
+  getMessages as getChatMessages,
+  removeSession as deleteChatSession,
+  streamMessage as streamChatMessage,
+} from "@/chat/routes";
 
 import { ErrorResponse } from "@/shared/typebox";
+import {
+  CreateSessionBody,
+  CreateSessionResponse,
+  ChatSessionsQuery,
+  ChatSessionsListResponse,
+  ChatSessionIdParams,
+  ChatMessagesResponse,
+  SendMessageBody,
+  DeleteSessionResponse,
+} from "@/chat/schemas";
 import { HealthResponse } from "@/health/schemas";
 import { VerificationOkResponse } from "@/verification/schemas";
 import { ModelsQuery, ModelsResponse } from "@/models/schemas";
@@ -28,34 +46,19 @@ import {
   RepositoriesResponse,
   BranchesResponse,
 } from "@/gitRepositories/schemas";
-import {
-  ReportInputBody,
-  ReportCreatedResponse,
-  ReportFallbackResponse,
-  ReportsListQuery,
-  ReportsListResponse,
-  ReportIdParams,
-  ReportGetResponse,
-  ReportCommitsQuery,
-  ReportCommitsResponse,
-} from "@/reports/schemas";
-import {
-  ProjectsResponse,
-  ProjectIdParams,
-  SyncStatusQuery,
-  ProjectSyncStatusResponse,
-} from "@/projects/schemas";
+import { ProjectsResponse } from "@/projects/schemas";
 import {
   AddCredentialBody,
   CredentialListResponse,
   CredentialCreatedResponse,
+  CredentialIdParams,
   VerifyCredentialBody,
   VerifyCredentialResponse,
 } from "@/credentials/schemas";
 import { AISettingsBody, AISettingsGetResponse } from "@/settings/schemas";
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: { level: env.LOG_LEVEL } });
 
   app.setErrorHandler<FastifyError>((error, _request, reply) => {
     if (error.validation) {
@@ -127,7 +130,7 @@ export async function buildApp() {
       params: RepoOwnerParams,
       response: { 200: BranchesResponse, 400: ErrorResponse },
     },
-  }, listBranches);
+}, listBranches);
 
   app.get("/api/v1/repositories/:owner/:repo/commits", {
     schema: {
@@ -149,43 +152,6 @@ export async function buildApp() {
     },
   }, countCommits);
 
-  app.post("/api/v1/reports", {
-    schema: {
-      description: "Generate a new report from commits",
-      tags: ["reports"],
-      body: ReportInputBody,
-      response: { 201: ReportCreatedResponse, 400: ErrorResponse, 429: ReportFallbackResponse },
-    },
-  }, createReport);
-
-  app.get("/api/v1/reports", {
-    schema: {
-      description: "List all generated reports, optionally filtered by project",
-      tags: ["reports"],
-      querystring: ReportsListQuery,
-      response: { 200: ReportsListResponse, 400: ErrorResponse, 500: ErrorResponse },
-    },
-  }, listReports);
-
-  app.get("/api/v1/reports/:id", {
-    schema: {
-      description: "Get a single report by ID",
-      tags: ["reports"],
-      params: ReportIdParams,
-      response: { 200: ReportGetResponse, 404: ErrorResponse },
-    },
-  }, getReport);
-
-  app.get("/api/v1/reports/:id/commits", {
-    schema: {
-      description: "Cursor-paginated commits for a report (searchable by commit message)",
-      tags: ["reports"],
-      params: ReportIdParams,
-      querystring: ReportCommitsQuery,
-      response: { 200: ReportCommitsResponse, 400: ErrorResponse, 404: ErrorResponse },
-    },
-  }, getReportCommits);
-
   app.get("/api/v1/projects", {
     schema: {
       description: "List synced GitHub projects",
@@ -194,15 +160,24 @@ export async function buildApp() {
     },
   }, listProjects);
 
-  app.get("/api/v1/projects/:id/sync", {
+  app.post("/api/v1/projects", {
     schema: {
-      description: "Sync status (watermark, latest job, totals) for a project branch",
+      description: "Create or connect a new project",
+      tags: ["projects"],
+      body: CreateProjectBody,
+      response: { 201: CreateProjectResponse, 500: ErrorResponse },
+    },
+  }, createProjectRoute);
+
+  app.post("/api/v1/projects/:id/branches/prepare", {
+    schema: {
+      description: "Ingest a project branch before chat retrieval",
       tags: ["projects"],
       params: ProjectIdParams,
-      querystring: SyncStatusQuery,
-      response: { 200: ProjectSyncStatusResponse, 400: ErrorResponse, 500: ErrorResponse },
+      body: PrepareBranchBody,
+      response: { 200: PrepareBranchResponse, 404: ErrorResponse, 500: ErrorResponse },
     },
-  }, getProjectSyncStatus);
+  }, prepareBranch);
 
   app.get("/api/v1/credentials", {
     schema: {
@@ -225,7 +200,7 @@ export async function buildApp() {
     schema: {
       description: "Delete a stored credential",
       tags: ["credentials"],
-      params: ReportIdParams,
+      params: CredentialIdParams,
       response: { 204: {}, 404: ErrorResponse },
     },
   }, deleteCredential);
@@ -255,6 +230,52 @@ export async function buildApp() {
       response: { 200: AISettingsGetResponse, 400: ErrorResponse, 500: ErrorResponse },
     },
   }, updateSettingsRoute);
+
+  app.post("/api/v1/chat/sessions", {
+    schema: {
+      description: "Create a new chat session for a project",
+      tags: ["chat"],
+      body: CreateSessionBody,
+      response: { 201: CreateSessionResponse, 400: ErrorResponse, 404: ErrorResponse, 500: ErrorResponse },
+    },
+  }, createChatSession);
+
+  app.get("/api/v1/chat/sessions", {
+    schema: {
+      description: "List chat sessions, optionally filtered by project",
+      tags: ["chat"],
+      querystring: ChatSessionsQuery,
+      response: { 200: ChatSessionsListResponse, 400: ErrorResponse, 500: ErrorResponse },
+    },
+  }, listChatSessions);
+
+  app.get("/api/v1/chat/sessions/:id/messages", {
+    schema: {
+      description: "List messages for a chat session",
+      tags: ["chat"],
+      params: ChatSessionIdParams,
+      response: { 200: ChatMessagesResponse, 400: ErrorResponse, 404: ErrorResponse, 500: ErrorResponse },
+    },
+  }, getChatMessages);
+
+  app.delete("/api/v1/chat/sessions/:id", {
+    schema: {
+      description: "Delete a chat session",
+      tags: ["chat"],
+      params: ChatSessionIdParams,
+      response: { 200: DeleteSessionResponse, 400: ErrorResponse, 404: ErrorResponse, 500: ErrorResponse },
+    },
+  }, deleteChatSession);
+
+  app.post("/api/v1/chat/sessions/:id/messages", {
+    schema: {
+      description: "Send a message and stream the assistant reply (SSE)",
+      tags: ["chat"],
+      params: ChatSessionIdParams,
+      body: SendMessageBody,
+      response: { 400: ErrorResponse, 404: ErrorResponse },
+    },
+  }, streamChatMessage);
 
   return app;
 }

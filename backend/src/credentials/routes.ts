@@ -6,8 +6,7 @@ import {
   deleteCredential,
   verifyCredential,
 } from "@/credentials/services";
-import { AddCredentialBody, VerifyCredentialBody } from "@/credentials/schemas";
-import { ReportIdParams } from "@/reports/schemas";
+import { AddCredentialBody, VerifyCredentialBody, CredentialIdParams } from "@/credentials/schemas";
 
 export async function listKeys(
   req: FastifyRequest,
@@ -46,7 +45,7 @@ export async function deleteKey(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const { id } = req.params as Static<typeof ReportIdParams>;
+  const { id } = req.params as Static<typeof CredentialIdParams>;
 
   try {
     const deleted = await deleteCredential(id);

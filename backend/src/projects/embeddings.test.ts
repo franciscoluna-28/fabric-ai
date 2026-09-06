@@ -39,8 +39,8 @@ describe("embedTexts", () => {
   it("returns vectors in input order regardless of response order", async () => {
     mockCreate.mockResolvedValue({
       data: [
-        { index: 1, embedding: Array.from({ length: 1536 }, (_, i) => i + 1) },
-        { index: 0, embedding: Array.from({ length: 1536 }, (_, i) => -(i + 1)) },
+        { index: 1, embedding: Array.from({ length: 512 }, (_, i) => i + 1) },
+        { index: 0, embedding: Array.from({ length: 512 }, (_, i) => -(i + 1)) },
       ],
     });
 
@@ -51,10 +51,22 @@ describe("embedTexts", () => {
     expect(vectors[1][0]).toBe(1);
   });
 
+  it("requests the configured embedding dimensions", async () => {
+    mockCreate.mockResolvedValue({
+      data: [{ index: 0, embedding: Array.from({ length: 512 }, () => 0) }],
+    });
+
+    await embedTexts(["x"]);
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ dimensions: 512 }),
+    );
+  });
+
   it("throws when the model returns the wrong number of dimensions", async () => {
     mockCreate.mockResolvedValue({ data: [{ index: 0, embedding: [1, 2, 3] }] });
 
-    await expect(embedTexts(["x"])).rejects.toThrow("expected 1536");
+    await expect(embedTexts(["x"])).rejects.toThrow("expected 512");
   });
 
   it("throws when no API key is available", async () => {

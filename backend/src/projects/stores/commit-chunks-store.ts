@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, cosineDistance, desc, eq, gte, ilike, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { db, DbOrTx, Tx } from "@/db/client";
 import { commitChunks, type CommitChunkMetadata } from "@/db/schema";
 
@@ -9,7 +9,6 @@ export type CommitChunkInput = {
   branch?: string;
   commitMessage: string;
   author?: string | null;
-  diffSummary: string;
   metadata?: CommitChunkMetadata;
   committedAt: Date;
 };
@@ -36,8 +35,7 @@ export async function upsertCommitChunks({
         branch: i.branch ?? "main",
         commitMessage: i.commitMessage,
         author: i.author ?? null,
-        diffSummary: i.diffSummary,
-        contentHash: contentHashOf(i.diffSummary),
+        contentHash: contentHashOf(i.commitMessage),
         metadata: i.metadata ?? {},
         committedAt: i.committedAt,
       })),
@@ -47,7 +45,6 @@ export async function upsertCommitChunks({
       set: {
         commitMessage: sql`excluded.commit_message`,
         author: sql`excluded.author`,
-        diffSummary: sql`excluded.diff_summary`,
         contentHash: sql`excluded.content_hash`,
         metadata: sql`excluded.metadata`,
         committedAt: sql`excluded.committed_at`,
@@ -78,6 +75,27 @@ export async function countChunksForProject({
   return row?.count ?? 0;
 }
 
+export async function getLatestCommitDate({
+  projectId,
+  branch,
+  tx,
+}: {
+  projectId: string;
+  branch?: string;
+  tx?: DbOrTx;
+}): Promise<Date | null> {
+  const client = tx || db;
+  const conditions = [eq(commitChunks.projectId, projectId)];
+  if (branch) conditions.push(eq(commitChunks.branch, branch));
+  const [row] = await client
+    .select({ committedAt: commitChunks.committedAt })
+    .from(commitChunks)
+    .where(and(...conditions))
+    .orderBy(desc(commitChunks.committedAt))
+    .limit(1);
+  return row?.committedAt ?? null;
+}
+
 export async function getChunksByShas({
   projectId,
   shas,
@@ -88,7 +106,7 @@ export async function getChunksByShas({
   shas: string[];
   branch?: string;
   tx?: DbOrTx;
-}): Promise<Map<string, { commitSha: string; diffSummary: string; metadata: CommitChunkMetadata; contentHash: string | null }>> {
+}): Promise<Map<string, { commitSha: string; metadata: CommitChunkMetadata; contentHash: string | null }>> {
   if (shas.length === 0) return new Map();
   const client = tx || db;
   const conditions = [
@@ -99,7 +117,6 @@ export async function getChunksByShas({
   const rows = await client
     .select({
       commitSha: commitChunks.commitSha,
-      diffSummary: commitChunks.diffSummary,
       metadata: commitChunks.metadata,
       contentHash: commitChunks.contentHash,
     })
@@ -131,4 +148,121 @@ export async function listCommitsForProject({
     .from(commitChunks)
     .where(and(...conditions))
     .orderBy(desc(commitChunks.committedAt));
+}
+
+export type CommitSearchResult = {
+  id: string;
+  commitSha: string;
+  commitMessage: string;
+  author: string | null;
+  committedAt: Date;
+  metadata: CommitChunkMetadata;
+  distance: number | null;
+};
+
+/**
+ * Vector search over the HNSW index. Orders by cosine distance ascending (most
+ * similar first); NULL embeddings are excluded by the HNSW index definition.
+ */
+export async function semanticSearchCommits({
+  projectId,
+  embedding,
+  limit,
+  branch,
+  startDate,
+  endDate,
+  tx,
+}: {
+  projectId: string;
+  embedding: number[];
+  limit: number;
+  branch?: string;
+  startDate?: Date;
+  endDate?: Date;
+  tx?: DbOrTx;
+}): Promise<CommitSearchResult[]> {
+  const client = tx || db;
+  const conditions = [
+    eq(commitChunks.projectId, projectId),
+    isNotNull(commitChunks.embedding),
+  ];
+  if (branch) conditions.push(eq(commitChunks.branch, branch));
+  if (startDate) conditions.push(gte(commitChunks.committedAt, startDate));
+  if (endDate) conditions.push(lte(commitChunks.committedAt, endDate));
+
+  const rows = await client
+    .select({
+      id: commitChunks.id,
+      commitSha: commitChunks.commitSha,
+      commitMessage: commitChunks.commitMessage,
+      author: commitChunks.author,
+      committedAt: commitChunks.committedAt,
+      metadata: commitChunks.metadata,
+      distance: cosineDistance(commitChunks.embedding, embedding),
+    })
+    .from(commitChunks)
+    .where(and(...conditions))
+    .orderBy(asc(cosineDistance(commitChunks.embedding, embedding)))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    ...r,
+    metadata: r.metadata ?? {},
+    distance: r.distance as number,
+  }));
+}
+
+/**
+ * Keyword fallback when no embeddings exist for a project (embedding disabled
+ * or not yet backfilled). Matches the commit message or any file path in scope.
+ */
+export async function keywordSearchCommits({
+  projectId,
+  query,
+  limit,
+  branch,
+  startDate,
+  endDate,
+  tx,
+}: {
+  projectId: string;
+  query: string;
+  limit: number;
+  branch?: string;
+  startDate?: Date;
+  endDate?: Date;
+  tx?: DbOrTx;
+}): Promise<CommitSearchResult[]> {
+  const client = tx || db;
+  const pattern = `%${query.replace(/[%_]/g, "")}%`;
+  const conditions = [
+    eq(commitChunks.projectId, projectId),
+    or(
+      ilike(commitChunks.commitMessage, pattern),
+      sql`${commitChunks.metadata}::text ILIKE ${pattern}`,
+    ),
+  ];
+  if (branch) conditions.push(eq(commitChunks.branch, branch));
+  if (startDate) conditions.push(gte(commitChunks.committedAt, startDate));
+  if (endDate) conditions.push(lte(commitChunks.committedAt, endDate));
+
+  const rows = await client
+    .select({
+      id: commitChunks.id,
+      commitSha: commitChunks.commitSha,
+      commitMessage: commitChunks.commitMessage,
+      author: commitChunks.author,
+      committedAt: commitChunks.committedAt,
+      metadata: commitChunks.metadata,
+    })
+    .from(commitChunks)
+    .where(and(...conditions))
+    .orderBy(desc(commitChunks.committedAt))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    ...r,
+    metadata: r.metadata ?? {},
+    distance: null,
+  }));
 }

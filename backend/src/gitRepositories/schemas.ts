@@ -27,6 +27,7 @@ export const CommitsResponse = Type.Object({
 export const CommitsCountQuery = Type.Object({
   startDate: Type.Optional(Type.String({ format: "date" })),
   endDate: Type.Optional(Type.String({ format: "date" })),
+  branch: Type.Optional(Type.String()),
 });
 
 export const CommitsCountResponse = Type.Object({
@@ -46,4 +47,5 @@ export const RepositoriesResponse = Type.Array(
 
 export const BranchesResponse = Type.Object({
   branches: Type.Array(Type.String()),
+  defaultBranch: Type.String(),
 });

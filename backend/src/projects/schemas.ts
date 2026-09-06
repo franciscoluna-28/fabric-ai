@@ -9,6 +9,7 @@ export const ProjectsResponse = Type.Object({
       providerOwner: Type.String(),
       repositoryName: Type.String(),
       defaultBranch: Type.String(),
+      indexedBranches: Type.Array(Type.String()),
       createdAt: Type.String({ format: "date-time" }),
       updatedAt: Type.String({ format: "date-time" }),
     }),
@@ -19,34 +20,33 @@ export const ProjectIdParams = Type.Object({
   id: Type.String(),
 });
 
-export const SyncStatusQuery = Type.Object({
-  branch: Type.Optional(Type.String({ default: "main" })),
+export const PrepareBranchBody = Type.Object({
+  branch: Type.String({ minLength: 1 }),
 });
 
-export const ProjectSyncStatusResponse = Type.Object({
-  projectId: Type.String(),
+export const PrepareBranchResponse = Type.Object({
   branch: Type.String(),
-  watermark: Type.Union([
-    Type.Null(),
-    Type.Object({
-      sha: Type.String(),
-      at: Type.String({ format: "date-time" }),
-    }),
-  ]),
-  latestJob: Type.Union([
-    Type.Null(),
-    Type.Object({
-      id: Type.String(),
-      status: Type.String(),
-      attempts: Type.Integer(),
-      error: Type.Union([Type.Null(), Type.String()]),
-      scheduledAt: Type.String({ format: "date-time" }),
-      startedAt: Type.Union([Type.Null(), Type.String({ format: "date-time" })]),
-      finishedAt: Type.Union([Type.Null(), Type.String({ format: "date-time" })]),
-    }),
-  ]),
-  totals: Type.Object({
-    chunks: Type.Integer(),
-    embedded: Type.Integer(),
-  }),
+  commitsFound: Type.Integer(),
+  chunksWritten: Type.Integer(),
+});
+
+export const CreateProjectBody = Type.Object({
+  gitProvider: Type.Optional(
+    Type.Union([Type.Literal("github"), Type.Literal("gitlab")], { default: "github" }),
+  ),
+  providerProjectId: Type.String(),
+  providerOwner: Type.String(),
+  repositoryName: Type.String(),
+  defaultBranch: Type.Optional(Type.String({ default: "main" })),
+});
+
+export const CreateProjectResponse = Type.Object({
+  id: Type.String(),
+  gitProvider: Type.String(),
+  providerProjectId: Type.String(),
+  providerOwner: Type.String(),
+  repositoryName: Type.String(),
+  defaultBranch: Type.String(),
+  createdAt: Type.String({ format: "date-time" }),
+  updatedAt: Type.String({ format: "date-time" }),
 });

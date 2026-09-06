@@ -15,7 +15,7 @@ import {
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PROVIDERS } from "@/src/shared/constants";
-import { ModelSelector } from "@/src/_features/reports/components/ModelSelector";
+import { ModelSelector } from "@/src/_features/settings/components/ModelSelector";
 import {
   useAISettings,
   useUpdateAISettings,
@@ -180,7 +180,7 @@ export function AISettingsManager() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              OpenRouter · limited to 1536-dimension models. Changing it applies
+              OpenRouter · limited to 512-dimension models. Changing it applies
               to newly synced commits; existing embeddings keep their model.
             </p>
           </div>

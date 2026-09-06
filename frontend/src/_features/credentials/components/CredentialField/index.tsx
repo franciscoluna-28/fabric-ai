@@ -2,23 +2,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/src/components/ui/alert-dialog";
-import {
   useAddCredential,
-  useDeleteCredential,
   useVerifyCredential,
 } from "@/src/_features/credentials/services";
 import { ProviderIcon } from "../ProviderIcon";
@@ -36,11 +24,9 @@ export function CredentialField({
   };
 }) {
   const [key, setKey] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const addCredential = useAddCredential();
   const verifyCredential = useVerifyCredential();
-  const deleteCredential = useDeleteCredential();
 
   const handleSave = async () => {
     if (!key) return;
@@ -58,18 +44,6 @@ export function CredentialField({
       toast.success(`${provider.label} key saved and verified`);
     } catch {
       toast.error("Failed to save key");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!credential) return;
-    try {
-      await deleteCredential.mutateAsync(credential.id);
-      toast.success(`${provider.label} key deleted`);
-    } catch {
-      toast.error("Failed to delete key");
-    } finally {
-      setDeleteOpen(false);
     }
   };
 
@@ -99,46 +73,6 @@ export function CredentialField({
             ) : null}
             Save
           </Button>
-          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:text-red-600"
-                disabled={!credential}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            {credential && (
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Delete {provider.label} key?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove the stored API key for {provider.label}.
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleteCredential.isPending}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={handleDelete}
-                    disabled={deleteCredential.isPending}
-                  >
-                    {deleteCredential.isPending ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : null}
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            )}
-          </AlertDialog>
         </div>
       </div>
     </div>
