@@ -132,6 +132,26 @@ export async function buildApp() {
     },
 }, listBranches);
 
+  app.get("/api/v1/repositories/:owner/:repo/commits", {
+    schema: {
+      description: "List commits for a repository within an optional date range",
+      tags: ["repositories"],
+      params: RepoOwnerParams,
+      querystring: CommitsQuery,
+      response: { 200: CommitsResponse, 400: ErrorResponse },
+    },
+  }, listCommits);
+
+  app.get("/api/v1/repositories/:owner/:repo/commits/count", {
+    schema: {
+      description: "Count commits for a repository within an optional date range",
+      tags: ["repositories"],
+      params: RepoOwnerParams,
+      querystring: CommitsCountQuery,
+      response: { 200: CommitsCountResponse, 400: ErrorResponse },
+    },
+  }, countCommits);
+
   app.get("/api/v1/projects", {
     schema: {
       description: "List synced GitHub projects",
