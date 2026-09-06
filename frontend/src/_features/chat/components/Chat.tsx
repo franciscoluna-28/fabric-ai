@@ -374,7 +374,7 @@ export function Chat() {
                 </PromptInputSubmit>
               </PromptInputFooter>
             </PromptInput>
-            <Suggestions className="mt-2">
+            <Suggestions className={branchesLoading ? "pointer-events-none opacity-50" : "mt-2"}>
               <Suggestion
                 suggestion="Summarize this week as a report"
                 onClick={handleSuggestion}
