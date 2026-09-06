@@ -1,29 +1,4 @@
-import { z } from "zod";
 import { Type } from "@sinclair/typebox";
-
-export const ownerRepoParamsSchema = z.object({
-  owner: z.string().min(1, "owner is required"),
-  repo: z.string().min(1, "repo is required"),
-});
-
-export const listCommitsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(100),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  branch: z.string().optional(),
-});
-
-export const countCommitsQuerySchema = z.object({
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-});
-
-export const listReposQuerySchema = z.object({
-  type: z.string().optional(),
-  sort: z.string().optional(),
-  direction: z.string().optional(),
-  per_page: z.coerce.number().int().min(1).max(100).default(10),
-});
 
 export const RepoOwnerParams = Type.Object({
   owner: Type.String(),
@@ -52,6 +27,7 @@ export const CommitsResponse = Type.Object({
 export const CommitsCountQuery = Type.Object({
   startDate: Type.Optional(Type.String({ format: "date" })),
   endDate: Type.Optional(Type.String({ format: "date" })),
+  branch: Type.Optional(Type.String()),
 });
 
 export const CommitsCountResponse = Type.Object({
@@ -71,4 +47,5 @@ export const RepositoriesResponse = Type.Array(
 
 export const BranchesResponse = Type.Object({
   branches: Type.Array(Type.String()),
+  defaultBranch: Type.String(),
 });

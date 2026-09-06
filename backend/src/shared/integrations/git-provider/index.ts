@@ -4,11 +4,7 @@ import { GithubAdapter } from "@/shared/integrations/git-provider/github-adapter
 export type { GitProvider } from "@/shared/integrations/git-provider/provider";
 export type {
   Repository,
-  Commit,
   RepositoryFilters,
-  CommitParams,
-  DateRangeParams,
-  Page,
   ConnectionStatus,
 } from "@/shared/integrations/git-provider/types";
 

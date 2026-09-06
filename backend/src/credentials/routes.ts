@@ -1,28 +1,21 @@
 import { FastifyRequest, FastifyReply } from "fastify";
+import type { Static } from "@sinclair/typebox";
 import {
   listCredentials,
   createCredential,
   deleteCredential,
   verifyCredential,
 } from "@/credentials/services";
-import {
-  addCredentialSchema,
-  credentialIdParamsSchema,
-  verifyCredentialSchema,
-  listKeysQuerySchema,
-} from "@/credentials/schemas";
+import { AddCredentialBody, VerifyCredentialBody, CredentialIdParams } from "@/credentials/schemas";
 
 export async function listKeys(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const parsed = listKeysQuerySchema.safeParse(req.query);
-  if (!parsed.success) {
-    return reply.status(400).send({ error: parsed.error.flatten() });
-  }
+  const provider = (req.query as { provider?: string }).provider;
 
   try {
-    const keys = await listCredentials(parsed.data.provider);
+    const keys = await listCredentials(provider);
     return reply.send({ keys });
   } catch (error) {
     console.error("Error listing credentials:", error);
@@ -34,13 +27,10 @@ export async function addKey(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  try {
-    const parsed = addCredentialSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
+  const { provider, key } = req.body as Static<typeof AddCredentialBody>;
 
-    const id = await createCredential(parsed.data);
+  try {
+    const id = await createCredential({ provider, key });
     return reply.code(201).send({ id });
   } catch (error: any) {
     if (error?.message?.startsWith("Unsupported provider")) {
@@ -55,13 +45,10 @@ export async function deleteKey(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  try {
-    const parsed = credentialIdParamsSchema.safeParse(req.params);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: "Invalid credential ID" });
-    }
+  const { id } = req.params as Static<typeof CredentialIdParams>;
 
-    const deleted = await deleteCredential(parsed.data.id);
+  try {
+    const deleted = await deleteCredential(id);
     if (!deleted) {
       return reply.status(404).send({ error: "Credential not found" });
     }
@@ -77,13 +64,10 @@ export async function verifyKey(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  try {
-    const parsed = verifyCredentialSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
+  const { provider, key } = req.body as Static<typeof VerifyCredentialBody>;
 
-    const valid = await verifyCredential(parsed.data.provider, parsed.data.key);
+  try {
+    const valid = await verifyCredential(provider, key);
     return reply.send({ valid });
   } catch (error) {
     console.error("Error verifying credential:", error);

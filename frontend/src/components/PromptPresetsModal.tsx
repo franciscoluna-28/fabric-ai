@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,33 +8,21 @@ import {
   DialogDescription,
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
 import { usePromptPresetsStore } from "@/src/store/prompt-presets";
-import { Trash2, FileText, Save } from "lucide-react";
+import { FileText } from "lucide-react";
 
 interface PromptPresetsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  currentPrompt: string;
   onSelectPrompt: (prompt: string) => void;
 }
 
 export function PromptPresetsModal({
   open,
   onOpenChange,
-  currentPrompt,
   onSelectPrompt,
 }: PromptPresetsModalProps) {
-  const { presets, addPreset, deletePreset } = usePromptPresetsStore();
-  const [newPresetName, setNewPresetName] = useState("");
-
-  const handleSavePreset = () => {
-    const name = newPresetName.trim();
-    const prompt = currentPrompt.trim();
-    if (!name || !prompt) return;
-    addPreset(name, prompt);
-    setNewPresetName("");
-  };
+  const { presets } = usePromptPresetsStore();
 
   const handleLoad = (prompt: string) => {
     onSelectPrompt(prompt);
@@ -53,26 +40,6 @@ export function PromptPresetsModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-2 rounded-lg border p-3">
-            <Input
-              placeholder="Save current as preset..."
-              value={newPresetName}
-              onChange={(e) => setNewPresetName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSavePreset();
-              }}
-              className="flex-1"
-            />
-            <Button
-              size="sm"
-              onClick={handleSavePreset}
-              disabled={!newPresetName.trim() || !currentPrompt.trim()}
-            >
-              <Save className="h-4 w-4 mr-1" />
-              Save
-            </Button>
-          </div>
-
           {presets.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
               No presets saved yet.
@@ -93,22 +60,14 @@ export function PromptPresetsModal({
                       {preset.prompt}
                     </p>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleLoad(preset.prompt)}
-                    >
-                      Load
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => deletePreset(preset.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => handleLoad(preset.prompt)}
+                  >
+                    Load
+                  </Button>
                 </div>
               ))}
             </div>

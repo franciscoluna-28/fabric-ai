@@ -5,7 +5,7 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   DATABASE_URL: z.string().default("postgres://scrapecat:scrapecat@localhost:5432/scrapecat"),
   OPENROUTER_API_KEY: z.string().default(""),
-  AI_MODEL: z.string().default("nvidia/nemotron-3-ultra-550b-a55b:free"),
+  AI_MODEL: z.string().default("openai/gpt-5.6-luna"),
   DEEPSEEK_API_KEY: z.string().default(""),
   OPENAI_API_KEY: z.string().default(""),
   GITHUB_TOKEN: z.string().default(""),
@@ -17,18 +17,9 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
-  SYNC_MAX_COMMITS: z.coerce.number().int().min(0).default(0),
-  SYNC_MAX_PAGES: z.coerce.number().int().min(0).default(0),
-  SYNC_DEADLINE_MS: z.coerce.number().int().min(0).default(0),
-  SYNC_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
-  SYNC_STALENESS_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
-  SYNC_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
-  SYNC_JOB_AWAIT_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
-  SYNC_WORKER_ENABLED: z
-    .enum(["true", "false"])
-    .default("true")
-    .transform((v) => v === "true"),
+  REPO_ARCHIVE_DIR: z.string().default("repos"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
 const parsed = envSchema.safeParse(process.env);

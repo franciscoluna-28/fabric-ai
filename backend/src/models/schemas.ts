@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 
 export const ModelsQuery = Type.Object({
   provider: Type.Optional(Type.String()),
+  modality: Type.Optional(Type.Union([Type.Literal("chat"), Type.Literal("embeddings")])),
 });
 
 export const ModelsResponse = Type.Object({

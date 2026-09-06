@@ -1,10 +1,11 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, DbOrTx, Tx } from "@/db/client";
 import { projects, type GitProvider } from "@/db/schema";
+import { commitChunks } from "@/db/schema";
 
 export type ProjectInput = {
   gitProvider?: GitProvider;
-  providerProjectId: number;
+  providerProjectId: string;
   providerOwner: string;
   repositoryName: string;
   defaultBranch?: string;
@@ -51,6 +52,15 @@ export async function listProjects(opts?: { tx?: DbOrTx }) {
     .orderBy(projects.repositoryName);
 }
 
+export async function listIndexedBranches(projectId: string, tx?: DbOrTx) {
+  const client = tx || db;
+  const rows = await client
+    .selectDistinct({ branch: commitChunks.branch })
+    .from(commitChunks)
+    .where(eq(commitChunks.projectId, projectId));
+  return rows.map((row) => row.branch).filter(Boolean).sort();
+}
+
 export async function getProjectById({
   id,
   tx,
@@ -73,7 +83,7 @@ export async function getProjectByProviderId({
   tx,
 }: {
   gitProvider: GitProvider;
-  providerProjectId: number;
+  providerProjectId: string;
   tx?: DbOrTx;
 }) {
   const client = tx || db;

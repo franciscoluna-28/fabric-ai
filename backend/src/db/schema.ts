@@ -5,7 +5,6 @@ import {
   jsonb,
   pgEnum,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -33,7 +32,7 @@ export type GitProvider = (typeof gitProviderEnum)["enumValues"][number];
 
 export const vector = customType<{ data: number[]; driverData: string }>({
   dataType() {
-    return "vector(1536)";
+    return "vector(512)";
   },
   toDriver(value: number[]): string {
     return `[${value.join(",")}]`; 
@@ -48,12 +47,23 @@ export const vector = customType<{ data: number[]; driverData: string }>({
 
 export type CommitChunkMetadata = {
   filesChanged?: string[];
+  fileStats?: {
+    filepath: string;
+    status: "added" | "deleted" | "modified";
+    additions: number;
+    deletions: number;
+  }[];
   additions?: number;
   deletions?: number;
   commitUrl?: string;
   prNumber?: number;
   prTitle?: string;
   prUrl?: string;
+  summary?: { model?: string; at?: string };
+  validation?: {
+    status?: "confirmed" | "flagged" | "skipped";
+    notes?: string[];
+  };
 };
 
 export const projects = pgTable(
@@ -61,7 +71,7 @@ export const projects = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     gitProvider: gitProviderEnum("git_provider").default("github").notNull(),
-    providerProjectId: integer("provider_project_id").notNull(),
+    providerProjectId: text("provider_project_id").notNull(),
     providerOwner: text("provider_owner").default("").notNull(),
     repositoryName: text("repository_name").notNull(),
     defaultBranch: text("default_branch").default("main").notNull(),
@@ -88,7 +98,6 @@ export const commitChunks = pgTable(
     branch: text("branch").notNull().default("main"),
     commitMessage: text("commit_message").notNull(),
     author: text("author"),
-    diffSummary: text("diff_summary").notNull(),
     embedding: vector("embedding"),
     contentHash: text("content_hash"),
     embeddingHash: text("embedding_hash"),
@@ -114,59 +123,28 @@ export const commitChunks = pgTable(
   },
 );
 
-export const projectSyncState = pgTable(
-  "project_sync_state",
-  {
-    projectId: uuid("project_id")
-      .references(() => projects.id, { onDelete: "cascade" })
-      .notNull(),
-    branch: text("branch").notNull(),
-    lastSyncedCommitSha: text("last_synced_commit_sha").notNull(),
-    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }).notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.projectId, table.branch] }),
-  }),
-);
-
-export const syncJobStatus = pgEnum("sync_job_status", [
-  "pending",
-  "running",
-  "succeeded",
-  "failed",
-]);
-
-export const syncJobs = pgTable(
-  "sync_jobs",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    projectId: uuid("project_id")
-      .references(() => projects.id, { onDelete: "cascade" })
-      .notNull(),
-    branch: text("branch").notNull(),
-    status: syncJobStatus("status").default("pending").notNull(),
-    attempts: integer("attempts").default(0).notNull(),
-    lastError: text("last_error"),
-    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).defaultNow().notNull(),
-    startedAt: timestamp("started_at", { withTimezone: true }),
-    finishedAt: timestamp("finished_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => ({
-    statusScheduledIdx: index("sync_jobs_status_scheduled_idx").on(
-      table.status,
-      table.scheduledAt,
-    ),
-  }),
-);
+export const reportJobs = pgTable("report_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  status: text("status").notNull().default("queued"),
+  phase: text("phase"),
+  commitCount: integer("commit_count").notNull().default(0),
+  progress: text("progress"),
+  error: jsonb("error").$type<{ message: string; status: number } | null>(),
+  data: jsonb("data").notNull(),
+  projectId: uuid("project_id"),
+  reportId: uuid("report_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+});
 
 export const reports = pgTable("reports", {
   id: uuid("id").defaultRandom().primaryKey(),
   projectId: uuid("project_id")
     .references(() => projects.id, { onDelete: "cascade" })
     .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => chatSessions.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   originalMarkdown: text("original_markdown").notNull(),
   startDate: timestamp("start_date", { withTimezone: true }).notNull(),
@@ -210,5 +188,59 @@ export const credentials = pgTable(
     providerUnique: uniqueIndex("credentials_provider_unique").on(table.provider),
   }),
 );
+
+export type ChatCitation = {
+  commitSha: string;
+  commitMessage: string;
+  author: string | null;
+  committedAt: string;
+  filesChanged: string[];
+  commitUrl: string | null;
+};
+
+export const chatSessions = pgTable(
+  "chat_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    projectId: uuid("project_id")
+      .references(() => projects.id, { onDelete: "cascade" })
+      .notNull(),
+    title: text("title").default("New chat").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    projectIdIdx: index("chat_sessions_project_id_idx").on(table.projectId),
+  }),
+);
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sessionId: uuid("session_id")
+      .references(() => chatSessions.id, { onDelete: "cascade" })
+      .notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    branch: text("branch"),
+    citations: jsonb("citations")
+      .$type<ChatCitation[]>()
+      .default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    sessionIdIdx: index("chat_messages_session_id_idx").on(table.sessionId),
+  }),
+);
+
+export const appSettings = pgTable("app_settings", {
+  id: text("id").primaryKey(),
+  reportProvider: text("report_provider").default("openrouter").notNull(),
+  reportModel: text("report_model").default("nvidia/nemotron-3-ultra-550b-a55b:free").notNull(),
+  embeddingProvider: text("embedding_provider").default("openrouter").notNull(),
+  embeddingModel: text("embedding_model").default("openai/text-embedding-3-small").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 export type CredentialProvider = (typeof credentialProviderEnum)["enumValues"][number];

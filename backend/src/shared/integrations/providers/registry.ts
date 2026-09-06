@@ -1,7 +1,7 @@
 export const PROVIDER_REGISTRY = {
   openrouter: {
     sdk: "openrouter",
-    defaultModel: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    defaultModel: "openai/gpt-5.6-luna",
     envKey: "OPENROUTER_API_KEY",
     verifyUrl: "https://openrouter.ai/api/v1/auth/key",
   },

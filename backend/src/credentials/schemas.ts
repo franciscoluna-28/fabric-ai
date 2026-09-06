@@ -1,27 +1,12 @@
-import { z } from "zod";
 import { Type } from "@sinclair/typebox";
 
-export const addCredentialSchema = z.object({
-  provider: z.string().min(1),
-  key: z.string().min(1, "API key is required"),
-});
-
-export const credentialIdParamsSchema = z.object({
-  id: z.string().min(1),
-});
-
-export const verifyCredentialSchema = z.object({
-  provider: z.string().min(1),
-  key: z.string().min(1, "API key is required"),
-});
-
-export const listKeysQuerySchema = z.object({
-  provider: z.string().optional(),
+export const CredentialIdParams = Type.Object({
+  id: Type.String(),
 });
 
 export const AddCredentialBody = Type.Object({
-  provider: Type.String(),
-  key: Type.String(),
+  provider: Type.String({ minLength: 1 }),
+  key: Type.String({ minLength: 1 }),
 });
 
 const CredentialResponse = Type.Object({
@@ -40,8 +25,8 @@ export const CredentialCreatedResponse = Type.Object({
 });
 
 export const VerifyCredentialBody = Type.Object({
-  provider: Type.String(),
-  key: Type.String(),
+  provider: Type.String({ minLength: 1 }),
+  key: Type.String({ minLength: 1 }),
 });
 
 export const VerifyCredentialResponse = Type.Object({

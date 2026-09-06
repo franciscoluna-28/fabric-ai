@@ -2,7 +2,7 @@
   "name": "scrapecat",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n frontend,backend -c yellow,green \"pnpm --filter @scrapecat/frontend dev\" \"pnpm --filter @scrapecat/backend dev\"",
+    "dev": "concurrently --names backend,frontend \"docker compose up db backend-dev\" \"pnpm --filter @scrapecat/frontend dev\"",
     "build": "pnpm --filter @scrapecat/frontend build && pnpm --filter @scrapecat/backend build",
     "lint": "pnpm --filter @scrapecat/frontend lint",
     "codegen": "npx tsx scripts/codegen.ts",

@@ -36,20 +36,6 @@ export function useAddCredential() {
   });
 }
 
-export function useDeleteCredential() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) =>
-      apiClient.DELETE("/api/v1/credentials/{id}", { params: { path: { id } } }).then((r) => {
-        if (r.error) throw r.error;
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.credentials.all });
-    },
-  });
-}
-
 export function useVerifyCredential() {
   return useMutation({
     mutationFn: (body: { provider: string; key: string }) =>

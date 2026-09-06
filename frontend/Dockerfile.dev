@@ -10,4 +10,4 @@ COPY frontend/package.json ./frontend/package.json
 RUN pnpm install
 
 EXPOSE 3000
-CMD ["pnpm", "--filter", "frontend", "dev"]
+CMD ["pnpm", "--filter", "frontend", "run", "dev:watch"]
